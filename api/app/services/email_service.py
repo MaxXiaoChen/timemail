@@ -2,6 +2,8 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.header import Header
+from email.utils import formatdate, make_msgid, formataddr
 from datetime import datetime
 from typing import Optional
 
@@ -13,6 +15,21 @@ class EmailService:
         self.smtp_password = os.getenv("SMTP_PASSWORD")
         self.from_name = os.getenv("SMTP_FROM_NAME", "时光邮局")
         self.from_email = os.getenv("SMTP_FROM_EMAIL", "noreply@timemail.com")
+        self.smtp_security = os.getenv("SMTP_SECURITY", "starttls").lower()
+
+    def _get_smtp_client(self):
+        import smtplib
+        use_ssl = self.smtp_security == "ssl" or self.smtp_port == 465
+        if use_ssl:
+            client = smtplib.SMTP_SSL(self.smtp_server, self.smtp_port)
+            client.ehlo()
+            return client
+        client = smtplib.SMTP(self.smtp_server, self.smtp_port)
+        client.ehlo()
+        if self.smtp_security == "starttls":
+            client.starttls()
+            client.ehlo()
+        return client
 
     def send_time_letter(self, to_email: str, content: str, delivery_time: datetime) -> bool:
         """发送时光邮件"""
@@ -117,21 +134,22 @@ class EmailService:
             </html>
             """
 
-            # 创建邮件消息
             msg = MIMEMultipart('alternative')
-            msg['Subject'] = subject
-            msg['From'] = f"{self.from_name} <{self.from_email}>"
+            msg['Subject'] = str(Header(subject, 'utf-8'))
+            msg['From'] = formataddr((str(Header(self.from_name, 'utf-8')), self.from_email))
             msg['To'] = to_email
+            msg['Date'] = formatdate(localtime=True)
+            msg['Message-ID'] = make_msgid()
 
-            # 添加HTML内容
-            html_part = MIMEText(html_body, 'html')
+            text_part = MIMEText(content, 'plain', 'utf-8')
+            html_part = MIMEText(html_body, 'html', 'utf-8')
+            msg.attach(text_part)
             msg.attach(html_part)
 
             # 连接SMTP服务器并发送邮件
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()  # 启用TLS加密
+            with self._get_smtp_client() as server:
                 server.login(self.smtp_username, self.smtp_password)
-                server.send_message(msg)
+                server.send_message(msg, from_addr=self.from_email, to_addrs=[to_email])
 
             print(f"✅ 邮件发送成功: {to_email}")
             return True
@@ -143,8 +161,7 @@ class EmailService:
     def test_connection(self) -> bool:
         """测试邮件服务连接"""
         try:
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()
+            with self._get_smtp_client() as server:
                 server.login(self.smtp_username, self.smtp_password)
                 return True
         except Exception as e:

@@ -24,7 +24,7 @@
 
 ### 后端
 - **框架**: FastAPI (Python 3.12)
-- **数据库**: PostgreSQL (开发环境使用SQLite)
+- **数据库**: PostgreSQL
 - **ORM**: SQLAlchemy 2.0
 - **定时任务**: APScheduler
 - **邮件服务**: SMTP (smtplib)
@@ -34,7 +34,7 @@
 ### 环境要求
 - Node.js 18+ 和 pnpm
 - Python 3.12+
-- PostgreSQL 15+ (可选，开发环境可用SQLite)
+- PostgreSQL 15+ 
 
 ### 安装依赖
 
@@ -111,6 +111,7 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 
 - **前端应用**: http://localhost:5173
 - **后端API**: http://localhost:8000
+- **健康检查**: http://localhost:8000/health
 - **API文档**: http://localhost:8000/docs
 
 ## 📖 API文档
